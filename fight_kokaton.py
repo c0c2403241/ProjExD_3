@@ -82,8 +82,17 @@ class Bird:
         if not (sum_mv[0] == 0 and sum_mv[1] == 0):
             self.img = __class__.imgs[tuple(sum_mv)]
         screen.blit(self.img, self.rct)
+    
+    def happy_img(self, num: int, screen: pg.Surface):
+        """
+        こうかとん画像を切り替え，画面に転送する
+        引数1 num：こうかとん画像ファイル名の番号
+        引数2 screen：画面Surface
+        """
+        self.img = pg.transform.rotozoom(pg.image.load(f"fig/6.png"), 0, 0.9)
+        screen.blit(self.img, self.rct)
 
-
+ 
 class Beam:
     """
     こうかとんが放つビームに関するクラス
@@ -171,8 +180,9 @@ def main():
                 if beam.rct.colliderect(bomb.rct):  # ビームと爆弾の衝突判定
                     beam = None  # ビームを消す
                     bomb = None  # 爆弾を消す
+                    bird.happy_img(8, screen)
 
-        key_lst = pg.key.get_pressed()
+        key_lst = pg.key.get_pressed() 
         bird.update(key_lst, screen)
         if beam is not None:
             beam.update(screen)
