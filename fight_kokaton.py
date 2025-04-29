@@ -5,9 +5,9 @@ import time
 import pygame as pg
 
 
-WIDTH = 1100  # ゲームウィンドウの幅
-HEIGHT = 650  # ゲームウィンドウの高さ
-NUM_OF_BOMBS = 5  # 爆弾の個数
+WIDTH = 1100
+HEIGHT = 650
+NUM_OF_BOMBS = 5
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -95,6 +95,23 @@ class Bomb:
         screen.blit(self.img, self.rct)
 
 
+class Explosion:
+    def __init__(self, center: tuple[int, int]):
+        self.imgs = [
+            pg.image.load("fig/explosion.gif"),
+            pg.transform.flip(pg.image.load("fig/explosion.gif"), True, False)
+        ]
+        self.life = 30
+        self.img = self.imgs[0]
+        self.rct = self.img.get_rect()
+        self.rct.center = center
+
+    def update(self, screen: pg.Surface):
+        self.life -= 1
+        self.img = self.imgs[self.life // 5 % 2]  # チラチラ防止
+        screen.blit(self.img, self.rct)
+
+
 class Score:
     def __init__(self):
         self.score = 0
@@ -115,12 +132,13 @@ class Score:
 
 def main():
     pg.display.set_caption("たたかえ！こうかとん")
-    screen = pg.display.set_mode((WIDTH, HEIGHT))    
+    screen = pg.display.set_mode((WIDTH, HEIGHT))
     bg_img = pg.image.load("fig/pg_bg.jpg")
     bird = Bird((300, 200))
     score = Score()
     beams = []
     bombs = [Bomb((255, 0, 0), 10) for _ in range(NUM_OF_BOMBS)]
+    explosions = []
     clock = pg.time.Clock()
     tmr = 0
 
@@ -136,34 +154,37 @@ def main():
         for bomb in bombs:
             if bird.rct.colliderect(bomb.rct):
                 bird.change_img(8, screen)
-                fonto = pg.font.Font(None, 80) 
-                txt = fonto.render("Game Over", True, (255, 0, 0)) 
+                fonto = pg.font.Font(None, 80)
+                txt = fonto.render("Game Over", True, (255, 0, 0))
                 screen.blit(txt, [WIDTH//2-150, HEIGHT//2])
                 pg.display.update()
                 time.sleep(1)
                 return
 
         # ビームと爆弾の衝突判定
-        for beam in beams:
-            for bomb in bombs[:]:  # bombs[:] でコピーして安全に削除できるようにする
+        for beam in beams[:]:
+            for bomb in bombs[:]:
                 if beam.rct.colliderect(bomb.rct):
-                    bombs.remove(bomb)  # 爆弾を削除
+                    explosions.append(Explosion(bomb.rct.center))
+                    bombs.remove(bomb)
+                    beams.remove(beam)
                     bird.change_img(6, screen)
                     score.increment()
-                    beam.rct.x = WIDTH + 1  # ビームも削除対象に
-                    break  # 1ビームが1爆弾にしか当たらないようにする
-
-        bombs = [bomb for bomb in bombs if bomb is not None]
-        beams = [beam for beam in beams if beam.rct.left < WIDTH]
+                    break
 
         key_lst = pg.key.get_pressed()
         bird.update(key_lst, screen)
 
+        beams = [beam for beam in beams if beam.rct.left < WIDTH]
         for beam in beams:
             beam.update(screen)
 
         for bomb in bombs:
             bomb.update(screen)
+
+        explosions = [exp for exp in explosions if exp.life > 0]
+        for exp in explosions:
+            exp.update(screen)
 
         score.update(screen)
         pg.display.update()
