@@ -2,14 +2,13 @@ import os
 import random
 import sys
 import time
+import math
 import pygame as pg
-
 
 WIDTH = 1100
 HEIGHT = 650
 NUM_OF_BOMBS = 5
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
 
 def check_bound(obj_rct: pg.Rect) -> tuple[bool, bool]:
     yoko, tate = True, True
@@ -44,6 +43,7 @@ class Bird:
         self.img = __class__.imgs[(+5, 0)]
         self.rct: pg.Rect = self.img.get_rect()
         self.rct.center = xy
+        self.dire = (+5, 0)
 
     def change_img(self, num: int, screen: pg.Surface):
         self.img = pg.transform.rotozoom(pg.image.load(f"fig/{num}.png"), 0, 0.9)
@@ -58,22 +58,38 @@ class Bird:
         self.rct.move_ip(sum_mv)
         if check_bound(self.rct) != (True, True):
             self.rct.move_ip(-sum_mv[0], -sum_mv[1])
-        if not (sum_mv[0] == 0 and sum_mv[1] == 0):
-            self.img = __class__.imgs[tuple(sum_mv)]
+        if sum_mv != [0, 0]:
+            self.dire = tuple(sum_mv)
+            self.img = __class__.imgs[self.dire]
         screen.blit(self.img, self.rct)
-
 
 class Beam:
     def __init__(self, bird: "Bird"):
-        self.img = pg.image.load(f"fig/beam.png")
+        dx, dy = bird.dire
+        norm = math.hypot(dx, dy)
+        if norm == 0:
+            norm = 1  # 安全対策（方向ベクトルが0のとき）
+
+        speed = 5
+        self.vx = dx / norm * speed
+        self.vy = dy / norm * speed
+
+        angle = math.degrees(math.atan2(-self.vy, self.vx))
+        base_img = pg.image.load("fig/beam.png")
+        self.img = pg.transform.rotozoom(base_img, angle, 1.0)
         self.rct = self.img.get_rect()
-        self.rct.centery = bird.rct.centery
-        self.rct.left = bird.rct.right
-        self.vx, self.vy = +5, 0
+
+        bird_center = bird.rct.center
+        bird_w, bird_h = bird.rct.size
+        offset_x = bird_w * self.vx / 5
+        offset_y = bird_h * self.vy / 5
+        self.rct.centerx = bird_center[0] + offset_x
+        self.rct.centery = bird_center[1] + offset_y
 
     def update(self, screen: pg.Surface):
         self.rct.move_ip(self.vx, self.vy)
         screen.blit(self.img, self.rct)
+
 
 
 class Bomb:
@@ -108,7 +124,7 @@ class Explosion:
 
     def update(self, screen: pg.Surface):
         self.life -= 1
-        self.img = self.imgs[self.life // 5 % 2]  # チラチラ防止
+        self.img = self.imgs[self.life // 5 % 2]
         screen.blit(self.img, self.rct)
 
 
@@ -161,7 +177,6 @@ def main():
                 time.sleep(1)
                 return
 
-        # ビームと爆弾の衝突判定
         for beam in beams[:]:
             for bomb in bombs[:]:
                 if beam.rct.colliderect(bomb.rct):
@@ -175,7 +190,7 @@ def main():
         key_lst = pg.key.get_pressed()
         bird.update(key_lst, screen)
 
-        beams = [beam for beam in beams if beam.rct.left < WIDTH]
+        beams = [beam for beam in beams if 0 <= beam.rct.left <= WIDTH and 0 <= beam.rct.top <= HEIGHT]
         for beam in beams:
             beam.update(screen)
 
