@@ -90,8 +90,6 @@ class Beam:
         self.rct.move_ip(self.vx, self.vy)
         screen.blit(self.img, self.rct)
 
-
-
 class Bomb:
     def __init__(self, color: tuple[int, int, int], rad: int):
         self.img = pg.Surface((2*rad, 2*rad))
